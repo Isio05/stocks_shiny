@@ -1,13 +1,28 @@
 source("shared_variables.R")
 
-chart_unempl <- function(min_date, max_date, transformation){
-  r <- GET(paste("https://www.quandl.com/api/v3/datasets/FRED/NROUST.json?api_key=", API_KEY, 
-                 "&transform=", transformation, 
-                 sep = ""))
+macro_chart <- function(indicator, min_date, max_date, transformation){
+  if(transformation == " ") transformation == ""
+  
+  if(indicator == "unem_st"){
+    r <- GET(paste("https://www.quandl.com/api/v3/datasets/FRED/NROUST.json?api_key=", API_KEY, 
+                   "&transform=", transformation, 
+                   sep = ""))    
+  }else if(indicator == "npgdp"){
+    r <- GET(paste("https://www.quandl.com/api/v3/datasets/FRED/NGDPPOT.json?api_key=", API_KEY, 
+                   "&transform=", transformation, 
+                   sep = ""))   
+  }else if(indicator == "rpgdp"){
+    r <- GET(paste("https://www.quandl.com/api/v3/datasets/FRED/GDPPOT.json?api_key=", API_KEY, 
+                   "&transform=", transformation, 
+                   sep = ""))   
+  }else if(indicator == "unem_lt"){
+    r <- GET(paste("https://www.quandl.com/api/v3/datasets/FRED/NROU.json?api_key=", API_KEY, 
+                   "&transform=", transformation, 
+                   sep = "")) 
+  }
+
   r_content <- content(r)
   # print(r_content$dataset$data[1][[1]][[1]])
-  
-  if(transformation == " ") transformation == ""
   
   unem_dates <- unlist(lapply(r_content$dataset$data, "[", c(1)))
   unem_vals <- unlist(lapply(r_content$dataset$data, "[", c(2)))

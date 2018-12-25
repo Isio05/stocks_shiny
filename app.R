@@ -22,7 +22,6 @@ ui <- fluidPage(
                      end = as.character(Sys.Date())),
       
       br(),
-      br(),
       
       checkboxInput("log", "Plot y axis on log scale", 
                     value = FALSE),
@@ -39,6 +38,13 @@ ui <- fluidPage(
                                  "Classic bars" = "bars",
                                  "Line" = "line")),
       
+      selectInput("indicator", "Choose macroeconomic indicator:",
+                  choices = list("Unemployment (adjusted)" = "unem_lt",
+                                 "Unemployment (unadjusted)" = "unem_st", 
+                                 "Real Potential GDP" = "rpgdp",
+                                 "Nominal Potential GDP" = "npgdp"),
+                  selected = " "),
+      
       selectInput("chart_transformation", "Choose transformation for second chart:",
                   choices = list("Without transform" = " ",
                                  "Change" = "diff", 
@@ -50,7 +56,7 @@ ui <- fluidPage(
     mainPanel(plotOutput("plot"),
               br(),
               br(),
-              plotOutput("plot_unempl"))
+              plotOutput("macro_chart"))
   )
 )
 
@@ -80,8 +86,9 @@ server <- function(input, output) {
     if(input$MACD) addMACD()
   })
   
-  output$plot_unempl <- renderPlot({
-    chart_unempl(min_date = input$dates[1], max_date = input$dates[2], transformation = input$chart_transformation)
+  output$macro_chart <- renderPlot({
+    macro_chart(indicator = input$indicator, 
+      min_date = input$dates[1], max_date = input$dates[2], transformation = input$chart_transformation)
   })
     
   output$stock_summary <- renderPrint({
