@@ -2,24 +2,20 @@ library("httr")
 library("shiny")
 library("ggplot2")
 library("caTools")
+library("quantmod")
 
 source("helpers.r")
 source("shared_variables.r")
 
 # User interface ----
-ui <- fluidPage(
-  titlePanel("Stocks"),
-  
-  sidebarLayout(
+ui <- navbarPage("My App",
+  # titlePanel("Stocks"),
+  tabPanel("Stocks and macro",
+
     sidebarPanel(
       helpText("Enter the ticker for the stock you want to view."),
       
       textInput("symb", "Symbol", "SPY"),
-      
-      dateRangeInput("dates", 
-                     "Date range",
-                     start = "2010-08-01", 
-                     end = as.character(Sys.Date())),
       
       tags$h5(strong("Additional plot features")),
       
@@ -39,6 +35,17 @@ ui <- fluidPage(
                                  "Classic bars" = "bars",
                                  "Line" = "line")),
       
+      br(),
+      br(),
+      
+      dateRangeInput("dates", 
+                     "Date range",
+                     start = "2010-08-01", 
+                     end = as.character(Sys.Date())),
+      
+      br(),
+      br(),
+      
       selectInput("indicator", "Choose macroeconomic indicator:",
                   choices = list("Unemployment (adjusted)" = "unem_lt",
                                  "Unemployment (unadjusted)" = "unem_st", 
@@ -54,11 +61,26 @@ ui <- fluidPage(
                   selected = " ")
     ),
     
-    mainPanel(plotOutput("plot"),
-              br(),
-              br(),
-              plotOutput("macro_chart"))
-  )
+    mainPanel(tabsetPanel(
+      tabPanel("Price chart", 
+               plotOutput("plot", height = "700px"),
+               verbatimTextOutput("stock_summary")),
+      tabPanel("Macroeconomic indicators", 
+               plotOutput("macro_chart", height = "700px"),
+               verbatimTextOutput("macro_summary"))))),
+    
+    tabPanel("Housing market",
+             sidebarPanel(
+               helpText(strong("Choose indicator and state to analyse. 
+                               NOTE: Not every statistic is available for every state.")),
+               
+               selectizeInput("indicator_housing", "Statistic:", INDICATORS, selected = "DOZP"),
+               
+               selectizeInput("state", "State:", STATES, selected = 2)),
+             
+             mainPanel(
+               plotOutput("housing_chart", height = "700px"))
+             )
 )
 
 # Server logic
@@ -71,11 +93,7 @@ server <- function(input, output) {
                auto.assign = FALSE)
   })
   
-  finalOutput <- reactive({
-    
-  })
-  
-  
+
   output$plot <- renderPlot({
     data <- dataInput()
     if(input$adjust){
@@ -93,14 +111,29 @@ server <- function(input, output) {
       addTDI()
     }
   })
-    
+  
   output$macro_chart <- renderPlot({
     macro_chart(indicator = input$indicator, 
-      min_date = input$dates[1], max_date = input$dates[2], transformation = input$chart_transformation)
+                min_date = input$dates[1], max_date = input$dates[2], transformation = input$chart_transformation)
   })
-    
+  
+  output$housing_chart <- renderPlot({
+    housing_chart(indicator = input$indicator_housing, state = input$state)
+  })
+  
   output$stock_summary <- renderPrint({
+    data <- dataInput()
+    if(input$adjust){
+      data <- adjust(dataInput())
+    }
+    
     summary(data)
+  })
+  
+  output$macro_summary <- renderPrint({
+    unem_df <- macro_stats(indicator = input$indicator, 
+                min_date = input$dates[1], max_date = input$dates[2], transformation = input$chart_transformation)
+    summary(unem_df)
   })
 }
 
