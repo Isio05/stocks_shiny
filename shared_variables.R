@@ -1,5 +1,3 @@
-API_KEY = "GysehMr_Z5bQybBkbUqk"
-
 INDICATORS = list("Age of Inventory (Public)"="AOIP",
               "Buyer Seller Index"="BSI",
               "Days on Zillow (Public)"="DOZP",

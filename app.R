@@ -11,6 +11,7 @@ library("corrplot")
 source("helpers.r")
 source("shared_variables.r")
 source("chooser_input.r")
+source("shared_variables_secret.R")
 
 # User interface ----
 ui <- navbarPage("U.S. Macroeconomics",
