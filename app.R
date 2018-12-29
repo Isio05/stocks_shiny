@@ -3,6 +3,10 @@ library("shiny")
 library("ggplot2")
 library("caTools")
 library("quantmod")
+library("grid")
+library("lattice")
+library("latticeExtra")
+library("corrplot")
 
 source("helpers.r")
 source("shared_variables.r")
@@ -54,7 +58,7 @@ ui <- navbarPage("My App",
                   selected = " "),
       
       selectInput("chart_transformation", "Choose transformation for second chart:",
-                  choices = list("Without transform" = " ",
+                  choices = list("Without transformation" = " ",
                                  "Change" = "diff", 
                                  "% Change" = "rdiff",
                                  "Cumulative" = "cumul"),
@@ -64,9 +68,11 @@ ui <- navbarPage("My App",
     mainPanel(tabsetPanel(
       tabPanel("Price chart", 
                plotOutput("plot", height = "700px"),
+               br(),
                verbatimTextOutput("stock_summary")),
       tabPanel("Macroeconomic indicators", 
                plotOutput("macro_chart", height = "700px"),
+               br(),
                verbatimTextOutput("macro_summary"))))),
     
     tabPanel("Housing market",
@@ -76,7 +82,27 @@ ui <- navbarPage("My App",
                
                selectizeInput("indicator_housing", "Statistic:", INDICATORS, selected = "DOZP"),
                
-               selectizeInput("state", "State:", STATES, selected = 2)),
+               selectizeInput("state", "State:", STATES, selected = 2),
+               
+               selectizeInput("housing_chart_type", "Choose chart type", choices = 
+                                list("Line" = "Line",
+                                     "Histogram" = "Histogram", 
+                                     "Dots" = "Dots",
+                                     "Candles" = "Candles",
+                                     "Year groups" = "Year groups"), 
+                              selected = "Line"),
+               
+               dateRangeInput("housing_dates", 
+                              "Date range",
+                              start = "2010-08-01", 
+                              end = as.character(Sys.Date())),
+               
+               selectInput("housing_chart_transformation", "Choose transformation for second chart:",
+                           choices = list("Without transformation" = " ",
+                                          "Change" = "diff", 
+                                          "% Change" = "rdiff",
+                                          "Cumulative" = "cumul"),
+                           selected = " ")),
              
              mainPanel(
                plotOutput("housing_chart", height = "700px"))
@@ -118,7 +144,9 @@ server <- function(input, output) {
   })
   
   output$housing_chart <- renderPlot({
-    housing_chart(indicator = input$indicator_housing, state = input$state)
+    housing_chart(indicator = input$indicator_housing, state = input$state, chart_type = input$housing_chart_type,
+                  min_date = input$housing_dates[1], max_date = input$housing_dates[2], 
+                  transformation=input$housing_chart_transformation)
   })
   
   output$stock_summary <- renderPrint({
