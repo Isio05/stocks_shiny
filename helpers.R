@@ -164,6 +164,103 @@ housing_chart <- function(indicator, state, chart_type, min_date, max_date, tran
   }
 }
 
+
+housing_corelation <- function(state, min_date, max_date, indicators_names_vector, corr_macro_indicator){
+
+  # print("INDICATOR NAMES VECTOR")
+  # print(indicators_names_vector)
+  indicators_vector <- c()
+  
+  for(name in indicators_names_vector){
+    indicators_vector <- c(indicators_vector, INDICATORS[[name]])
+  }
+  
+  for(indicator in indicators_vector){
+    # print(paste("Checking", indicator, sep= " "))
+    r <- GET(paste("https://www.quandl.com/api/v3/datasets/ZILLOW/S",
+                   state,
+                   "_",
+                   indicator,
+                   ".json?api_key=",
+                   API_KEY,
+                   sep = ""))
+    
+    r_content <- content(r)
+    # print("Unpacked content")
+    
+    if (is.null(r_content$quandl_error$code)){
+
+      if(!exists("housing_stats")){
+      housing_stats <- data.frame(unlist(lapply(r_content$dataset$data, "[", c(1))))
+      colnames(housing_stats) <- c("Dates")
+      # print("Created dates column for DF")
+      
+      housing_stats[indicator] <- unlist(lapply(r_content$dataset$data, "[", c(2)))
+      housing_stats["Dates"] <- format(as.Date(housing_stats$Dates, format="%Y-%m-%d"),"%Y-%m")
+      
+      # print("Unpacked values to DF")
+      }else if(length(unlist(lapply(r_content$dataset$data, "[", c(1)))) >= 60){
+        df_to_merge <- data.frame(unlist(lapply(r_content$dataset$data, "[", c(1))))
+        colnames(df_to_merge) <- c("Dates")
+        # print("Created dates column for DF (base DF exists)")
+        
+        df_to_merge[indicator] <- unlist(lapply(r_content$dataset$data, "[", c(2)))
+        # print("Unpacked values to DF (base DF exists)")
+        
+        df_to_merge["Dates"] <- format(as.Date(df_to_merge$Dates, format="%Y-%m-%d"),"%Y-%m")
+        
+        housing_stats <- merge(housing_stats, df_to_merge, by.x = "Dates", by.y = "Dates")
+        # print("DFs merged (base DF exists)")
+      }
+    }
+  }
+  # min_date_from_df <- which.min(abs(as.Date(housing_stats$Dates) - rep(as.Date(min_date),length(housing_stats$Dates))))
+  # max_date_from_df <- which.min(abs(as.Date(housing_stats$Dates) - rep(as.Date(max_date),length(housing_stats$Dates))))
+  # housing_stats <- housing_stats[max_date_from_df:min_date_from_df,,drop=F]
+  # housing_stats <- housing_stats[,2:length(unlist(dimnames(housing_stats)[2])),drop=F]
+  # print("DF truncated")
+  
+  if(corr_macro_indicator != " "){
+    transformation = ""
+    if(corr_macro_indicator == "unem_st"){
+      r <- GET(paste("https://www.quandl.com/api/v3/datasets/FRED/NROUST.json?api_key=", API_KEY, 
+                     "&transform=", transformation, 
+                     sep = ""))    
+    }else if(corr_macro_indicator == "npgdp"){
+      r <- GET(paste("https://www.quandl.com/api/v3/datasets/FRED/NGDPPOT.json?api_key=", API_KEY, 
+                     "&transform=", transformation, 
+                     sep = ""))   
+    }else if(corr_macro_indicator == "rpgdp"){
+      r <- GET(paste("https://www.quandl.com/api/v3/datasets/FRED/GDPPOT.json?api_key=", API_KEY, 
+                     "&transform=", transformation, 
+                     sep = ""))   
+    }else if(corr_macro_indicator == "unem_lt"){
+      r <- GET(paste("https://www.quandl.com/api/v3/datasets/FRED/NROU.json?api_key=", API_KEY, 
+                     "&transform=", transformation, 
+                     sep = "")) 
+    }
+    
+    r_content <- content(r)
+
+    unem_dates <- unlist(lapply(r_content$dataset$data, "[", c(1)))
+    unem_vals <- unlist(lapply(r_content$dataset$data, "[", c(2)))
+    df_to_merge <- data.frame(unem_dates, unem_vals)
+    colnames(df_to_merge) <- c("Dates","Macro")
+    
+    df_to_merge["Dates"] <- format(as.Date(df_to_merge$Dates, format="%Y-%m-%d"),"%Y-%m")
+    # print(df_to_merge)
+    housing_stats <- merge(housing_stats, df_to_merge, by.x = "Dates", by.y = "Dates", all.x = TRUE)
+    # print(housing_stats)
+  }
+  
+  if(exists("housing_stats")){
+    for_corr <- housing_stats[,2:length(unlist(dimnames(housing_stats)[2])),drop=F]
+    for_corr <- for_corr[complete.cases(for_corr),,drop=F]
+    
+    corrplot(cor(for_corr), tl.col = "black")
+  }
+}
+
 if (!exists(".inflation")) {
   .inflation <- getSymbols('CPIAUCNS', src = 'FRED', 
                            auto.assign = FALSE)

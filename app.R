@@ -10,9 +10,10 @@ library("corrplot")
 
 source("helpers.r")
 source("shared_variables.r")
+source("chooser_input.r")
 
 # User interface ----
-ui <- navbarPage("My App",
+ui <- navbarPage("U.S. Macroeconomics",
   # titlePanel("Stocks"),
   tabPanel("Stocks and macro",
 
@@ -69,11 +70,15 @@ ui <- navbarPage("My App",
       tabPanel("Price chart", 
                plotOutput("plot", height = "700px"),
                br(),
-               verbatimTextOutput("stock_summary")),
+               fluidRow(column(1),
+                        column(10,verbatimTextOutput("stock_summary")),
+                        column(1))),
       tabPanel("Macroeconomic indicators", 
                plotOutput("macro_chart", height = "700px"),
                br(),
-               verbatimTextOutput("macro_summary"))))),
+               fluidRow(column(4),
+                        column(4,verbatimTextOutput("macro_summary")),
+                        column(4)))))),
     
     tabPanel("Housing market",
              sidebarPanel(
@@ -106,7 +111,24 @@ ui <- navbarPage("My App",
              
              mainPanel(
                plotOutput("housing_chart", height = "700px"))
-             )
+             ),
+  tabPanel("Housing - correlation",
+           sidebarPanel(
+             helpText("Choose indicators to check correlation. NOTE: Not every coefficient is available for every state."),
+             chooserInput("indicators_vector", "Available indicators", "Selected",
+                          INDICATORS_NAMES, c(), size = 10, multiple = TRUE),
+             br(),
+             selectizeInput("corr_state", "State:", STATES, selected = 2),
+             br(),
+             selectInput("corr_macro_indicator", "Choose macroeconomic indicator to compare:",
+                         choices = list("Unemployment (adjusted)" = "unem_lt",
+                                        "Unemployment (unadjusted)" = "unem_st", 
+                                        "Real Potential GDP" = "rpgdp",
+                                        "Nominal Potential GDP" = "npgdp",
+                                        "None" = " "),
+                         selected = " ")),
+           
+           mainPanel(plotOutput("corr_chart", height = "700px")))
 )
 
 # Server logic
@@ -162,6 +184,11 @@ server <- function(input, output) {
     unem_df <- macro_stats(indicator = input$indicator, 
                 min_date = input$dates[1], max_date = input$dates[2], transformation = input$chart_transformation)
     summary(unem_df)
+  })
+  
+  output$corr_chart <- renderPlot({
+    housing_corelation(state = input$corr_state, indicators_names_vector = input$indicators_vector$right,
+                       corr_macro_indicator = input$corr_macro_indicator)
   })
 }
 
